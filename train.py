@@ -3,6 +3,7 @@
 # @Date:   2019-10-22 15:05:15
 # @Last Modified by:   User
 # @Last Modified time: 2019-10-30 22:04:25
+from operator import truediv
 import os
 import cv2
 import dlib
@@ -119,7 +120,7 @@ def predict(width, height, confidences, boxes, prob_threshold, iou_threshold=0.5
     picked_box_probs[:, 3] *= height
     return picked_box_probs[:, :4].astype(np.int32), np.array(picked_labels), picked_box_probs[:, 4]
 
-onnx_path = 'models/ultra_light/ultra_light_models/ultra_light_640.onnx'
+onnx_path = '/home/shantanu/Downloads/ultra_light_640.onnx'
 onnx_model = onnx.load(onnx_path)
 predictor = prepare(onnx_model)
 ort_session = ort.InferenceSession(onnx_path)
@@ -129,61 +130,73 @@ shape_predictor = dlib.shape_predictor('models/facial_landmarks/shape_predictor_
 fa = face_utils.facealigner.FaceAligner(shape_predictor, desiredFaceWidth=112, desiredLeftEye=(0.3, 0.3))
 
 
-TRAINING_BASE = 'faces/training/'
+TRAINING_BASE = 'faces/train/'
 
 dirs = os.listdir(TRAINING_BASE)
 images = []
 names = []
-
+cnt = 0
 for label in dirs:
-    for i, fn in enumerate(os.listdir(os.path.join(TRAINING_BASE, label))):
-        print(f"start collecting faces from {label}'s data")
-        cap = cv2.VideoCapture(os.path.join(TRAINING_BASE, label, fn))
-        frame_count = 0
-        while True:
-            # read video frame
-            ret, raw_img = cap.read()
-            # process every 5 frames
-            if frame_count % 5 == 0 and raw_img is not None:
-                h, w, _ = raw_img.shape
-                img = cv2.cvtColor(raw_img, cv2.COLOR_BGR2RGB)
-                img = cv2.resize(img, (640, 480))
-                img_mean = np.array([127, 127, 127])
-                img = (img - img_mean) / 128
-                img = np.transpose(img, [2, 0, 1])
-                img = np.expand_dims(img, axis=0)
-                img = img.astype(np.float32)
+    #for i, fn in enumerate(os.listdir(os.path.join(TRAINING_BASE, label))):
+    flag = False
+    # for i in range(len(dirs)):
+    print(f"start collecting faces from {label}'s data")
+    # cap = cv2.VideoCapture(os.path.join(TRAINING_BASE, label, fn))
+    frame_count = 0
+    cnt += 1
+    print("********",dirs)
+    for filename in os.listdir(os.path.join(TRAINING_BASE, label)):
+        print("LOCATIONNNN", os.path.join(TRAINING_BASE,label,filename))
+        raw_img = cv2.imread(os.path.join(TRAINING_BASE,label,filename))
+        #raw_img = cv2.imread('faces/train/ketaki/IMG_20191013_221522_670.jpg')
+        print("--------------------- READ IMAGE", filename)
+        # cv2.imshow("raw",raw_img)
+        # cv2.waitKey(0)
+        if raw_img is not None:
+            h, w, _ = raw_img.shape
+            img = cv2.cvtColor(raw_img, cv2.COLOR_BGR2RGB)
+            img = cv2.resize(img, (640, 480))
+            print("RESIZEDDDDDDDD")
+            img_mean = np.array([127, 127, 127])
+            img = (img - img_mean) / 128
+            img = np.transpose(img, [2, 0, 1])
+            img = np.expand_dims(img, axis=0)
+            img = img.astype(np.float32)
 
-                confidences, boxes = ort_session.run(None, {input_name: img})
-                boxes, labels, probs = predict(w, h, confidences, boxes, 0.7)
+            confidences, boxes = ort_session.run(None, {input_name: img})
+            boxes, labels, probs = predict(w, h, confidences, boxes, 0.7)
 
-                # if face detected
-                if boxes.shape[0] > 0:
-                    x1, y1, x2, y2 = boxes[0,:]
-                    gray = cv2.cvtColor(raw_img, cv2.COLOR_BGR2GRAY)
-                    aligned_face = fa.align(raw_img, gray, dlib.rectangle(left = x1, top=y1, right=x2, bottom=y2))
-                    aligned_face = cv2.resize(aligned_face, (112,112))
+            # if face detected
+            if boxes.shape[0] > 0:
+                x1, y1, x2, y2 = boxes[0,:]
+                gray = cv2.cvtColor(raw_img, cv2.COLOR_BGR2GRAY)
+                aligned_face = fa.align(raw_img, gray, dlib.rectangle(left = x1, top=y1, right=x2, bottom=y2))
+                aligned_face = cv2.resize(aligned_face, (112,112))
 
-                    cv2.imwrite(f'faces/tmp/{label}_{frame_count}.jpg', aligned_face)
+                cv2.imwrite(f'faces/tmp/{label}_{frame_count}.jpg', aligned_face)
 
-                    aligned_face = aligned_face - 127.5
-                    aligned_face = aligned_face * 0.0078125
-                    images.append(aligned_face)
-                    names.append(label)
+                aligned_face = aligned_face - 127.5
+                aligned_face = aligned_face * 0.0078125
+                images.append(aligned_face)
+                names.append(label)
+        frame_count += 1
+        if frame_count == 5: 
+            flag = True
+            break
 
-            frame_count += 1
-            if frame_count == cap.get(cv2.CAP_PROP_FRAME_COUNT):
-                break
 
+tf.compat.v1.disable_v2_behavior()
+tf.compat.v1.enable_resource_variables()
 with tf.Graph().as_default():
-    with tf.Session() as sess:
+
+    with tf.compat.v1.Session() as sess:
         print("loading checkpoint ...")
-        saver = tf.train.import_meta_graph('models/mfn/m1/mfn.ckpt.meta')
+        saver = tf.compat.v1.train.import_meta_graph('models/mfn/m1/mfn.ckpt.meta')
         saver.restore(sess, 'models/mfn/m1/mfn.ckpt')
 
-        images_placeholder = tf.get_default_graph().get_tensor_by_name("input:0")
-        embeddings = tf.get_default_graph().get_tensor_by_name("embeddings:0")
-        phase_train_placeholder = tf.get_default_graph().get_tensor_by_name("phase_train:0")
+        images_placeholder = tf.compat.v1.get_default_graph().get_tensor_by_name("input:0")
+        embeddings = tf.compat.v1.get_default_graph().get_tensor_by_name("embeddings:0")
+        phase_train_placeholder = tf.compat.v1.get_default_graph().get_tensor_by_name("phase_train:0")
 
         feed_dict = { images_placeholder: images, phase_train_placeholder:False }
         embeds = sess.run(embeddings, feed_dict=feed_dict)

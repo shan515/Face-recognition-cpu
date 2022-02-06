@@ -150,7 +150,7 @@ with tf.Graph().as_default():
         while True:
             fps = video_capture.get(cv2.CAP_PROP_FPS)
             ret, frame = video_capture.read()
-
+            print("FPS: ",fps)
             # preprocess faces
             h, w, _ = frame.shape
             img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -211,6 +211,7 @@ with tf.Graph().as_default():
                     cv2.rectangle(frame, (x1, y2 - 20), (x2, y2), (80,18,236), cv2.FILLED)
                     font = cv2.FONT_HERSHEY_DUPLEX
                     cv2.putText(frame, text, (x1 + 6, y2 - 6), font, 0.3, (255, 255, 255), 1)
+                    # cv2.putText(frame, fps, (x1 + 10, y2 - 10), font, 0.3, (255, 255, 255), 1)
 
             cv2.imshow('Video', frame)
 
