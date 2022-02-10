@@ -120,7 +120,7 @@ def predict(width, height, confidences, boxes, prob_threshold, iou_threshold=0.5
     picked_box_probs[:, 3] *= height
     return picked_box_probs[:, :4].astype(np.int32), np.array(picked_labels), picked_box_probs[:, 4]
 
-onnx_path = '/home/shantanu/Downloads/ultra_light_640.onnx'
+onnx_path = 'models/ultra_light/ultra_light_models/ultra_light_640.onnx'
 onnx_model = onnx.load(onnx_path)
 predictor = prepare(onnx_model)
 ort_session = ort.InferenceSession(onnx_path)
