@@ -130,7 +130,7 @@ shape_predictor = dlib.shape_predictor('models/facial_landmarks/shape_predictor_
 fa = face_utils.facealigner.FaceAligner(shape_predictor, desiredFaceWidth=112, desiredLeftEye=(0.3, 0.3))
 
 
-TRAINING_BASE = 'faces/train/'
+TRAINING_BASE = '/home/shantanu/FYP/cpu_facenet/testing_stage/'
 
 dirs = os.listdir(TRAINING_BASE)
 images = []
