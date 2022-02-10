@@ -13,6 +13,9 @@ import pickle
 import onnx
 import onnxruntime as ort
 from onnx_tf.backend import prepare
+from firebase import firebase
+import requests
+import shutil
 
 def area_of(left_top, right_bottom):
     """
@@ -119,6 +122,17 @@ def predict(width, height, confidences, boxes, prob_threshold, iou_threshold=0.5
     picked_box_probs[:, 3] *= height
     return picked_box_probs[:, :4].astype(np.int32), np.array(picked_labels), picked_box_probs[:, 4]
 
+def update_firebase(uid):
+    fb = firebase.FirebaseApplication('https://fypfirebase-6bae7-default-rtdb.firebaseio.com/', None)
+    users = fb.get('/users/', '')
+    uparr = {}
+    #print(users)
+    uparr[uid] = {'name':users[uid]["profile"]["username"], 'stat':users[uid]["profile"]["status"]}
+    url = 'https://fypfirebase-6bae7-default-rtdb.firebaseio.com/users/'+ str(uid) + '/profile/'
+    print(url)
+    r = fb.put(url,'status',data=True)
+    #print(r.status_code)
+
 onnx_path = 'models/ultra_light/ultra_light_models/ultra_light_640.onnx'
 onnx_model = onnx.load(onnx_path)
 predictor = prepare(onnx_model)
@@ -196,6 +210,7 @@ with tf.Graph().as_default():
                     idx = np.argmin(dist)
                     if dist[idx] < threshold:
                         predictions.append(names[idx])
+                        update_firebase(str(names[idx]))
                     else:
                         predictions.append("unknown")
 
