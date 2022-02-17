@@ -16,6 +16,8 @@ from onnx_tf.backend import prepare
 from firebase import firebase
 import requests
 import shutil
+from time import localtime,strftime
+import time
 
 def area_of(left_top, right_bottom):
     """
@@ -127,11 +129,30 @@ def update_firebase(uid):
     users = fb.get('/users/', '')
     uparr = {}
     #print(users)
-    uparr[uid] = {'name':users[uid]["profile"]["username"], 'stat':users[uid]["profile"]["status"]}
+    for i in users:
+        uparr[str(i)] = users[str(i)]["profile"]["status"]
     url = 'https://fypfirebase-6bae7-default-rtdb.firebaseio.com/users/'+ str(uid) + '/profile/'
-    print(url)
-    r = fb.put(url,'status',data=True)
-    #print(r.status_code)
+    #print(uparr)
+    # r2 = fb.get(url,'status')
+    # flag = str(r2)
+    # print("Flag",flag)
+    ent_ext = 'entry'
+    if uparr[str(uid)] == True :
+        ent_ext = 'exit'
+        log_entry_time(uid,ent_ext)
+        r = fb.put(url,'status',data=False)
+    else:
+        ent_ext = 'entry'
+        log_entry_time(uid,ent_ext)
+        r = fb.put(url,'status',data=True)
+
+def log_entry_time(uid,ent_ext):
+    fb = firebase.FirebaseApplication('https://fypfirebase-6bae7-default-rtdb.firebaseio.com/', None)
+    users = fb.get('/users/', '')
+    uparr = {}
+    url = 'https://fypfirebase-6bae7-default-rtdb.firebaseio.com/users/'+ str(uid) + '/profile/'
+    #print(url)
+    r = fb.put(url,ent_ext,data=strftime("%d %b %Y %X ", localtime()))
 
 onnx_path = 'models/ultra_light/ultra_light_models/ultra_light_640.onnx'
 onnx_model = onnx.load(onnx_path)
@@ -208,9 +229,11 @@ with tf.Graph().as_default():
                     diff = np.subtract(saved_embeds, embedding)
                     dist = np.sum(np.square(diff), 1)
                     idx = np.argmin(dist)
+                    flag = False
                     if dist[idx] < threshold:
                         predictions.append(names[idx])
                         update_firebase(str(names[idx]))
+                        #time.sleep(5)
                     else:
                         predictions.append("unknown")
 
@@ -226,6 +249,8 @@ with tf.Graph().as_default():
                     cv2.rectangle(frame, (x1, y2 - 20), (x2, y2), (80,18,236), cv2.FILLED)
                     font = cv2.FONT_HERSHEY_DUPLEX
                     cv2.putText(frame, text, (x1 + 6, y2 - 6), font, 0.3, (255, 255, 255), 1)
+                    if predictions[i]!="unknown":
+                        cv2.putText(frame, "DONE", (10, 10), font, 0.3, (255, 255, 255), 1)
                     # cv2.putText(frame, fps, (x1 + 10, y2 - 10), font, 0.3, (255, 255, 255), 1)
 
             cv2.imshow('Video', frame)
