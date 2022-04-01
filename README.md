@@ -10,8 +10,6 @@ Install all dependencies with
 pip install -r requirements.txt
 ```
 
-#### Result:
-![webcam](output/recog_trim.gif)
 
 #### References:
 - MobileFaceNet: [link1](https://arxiv.org/abs/1804.07573), [link2](https://github.com/yangxue0827/MobileFaceNet_Tensorflow)
